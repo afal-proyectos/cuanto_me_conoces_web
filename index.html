@@ -21,7 +21,7 @@
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbW5od3Z6cWJvamJmcWpocmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NTM4NDcsImV4cCI6MjEwMDEyOTg0N30.bePsqv4Qa5e_Edee-AkJCv9wN4faobh_cmF0TEYjlk0";
         
         // Inicializamos el cliente de Supabase en el navegador
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase_client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // 3. Capturar el ID del Quizz desde la URL (?id=xxxx)
         const parametrosURL = new URLSearchParams(window.location.search);
@@ -41,7 +41,7 @@
             try {
                 // 4. La consulta relacional en JavaScript (Equivalente al JOIN de tu backend)
                 // Traemos la relación usando los nuevos nombres con guiones bajos
-                const { data, error } = await supabase
+                const { data, error } = await supabase_client
                     .from('Quizz_Preguntas')
                     .select(`
                         index_pregunta,
@@ -58,8 +58,8 @@
                             )
                         )
                     `)
-                    .eq('id_quizz', idQuizz);
-
+                    .eq('id_quizz', idQuizz)
+                    .order('index_pregunta',{ascending: true});
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
@@ -75,7 +75,8 @@
 
             } catch (err) {
                 console.error("Error al conectar con Supabase:", err);
-                contenedor.innerHTML = "<h2>💥 Hubo un problema al cargar las preguntas.</h2>";
+                contenedor.innerHTML = `<h2>💥 Hubo un problema al cargar las preguntas.</h2><p style="color:red;">Detalles: ${err.message || err}</p>`;
+
             }
         }
 
