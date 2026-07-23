@@ -29,7 +29,8 @@
 
         //Lista de pregunta
         let preguntasCargadas = [];
-
+        
+        
         // Función principal que arranca al cargar la página
         async function iniciarJuego() {
             const contenedor = document.getElementById("contenedor-pantalla");
@@ -112,7 +113,7 @@
                     `;
                 });
                 
-                contenedor.appendChild(bloquePregunta);
+                contenedor.appendChild(bloque);
             });
             //Botón de envío final
             const botonEnviar = document.createElement("button");
@@ -121,12 +122,14 @@
             botonEnviar.onclick = enviarRespuestas;
             contenedor.appendChild(botonEnviar);
         }
-
+                
+              
         async function enviarRespuestas() {
-            const nombre = document.getElementById("nombre-jugador").value.trim();
-            if (!nombre){
+            const nombreJugador = document.getElementById("nombre-jugador").value.trim();
+            if (!nombreJugador){
                 alert("Por favor, escribe tu nombre.");
-            }
+                return;
+            } 
             //Contruir el objeto Json simple
             const mapaRespuestas = {}
 
@@ -144,22 +147,34 @@
 
             const contenedor = document.getElementById("contenedor-pantalla");
             contenedor.innerHTML = "<h2>Subiendo tus respuestas... </h2>";
-
+            
+            //necesito obter el id del jugador (que es un uuid)
+            
             try {
+                //crear el jugador
+                const idJugador = crypto.randomUUID();
+                const   {error: errJugador} = await supabase_client
+                    .from('Jugadores')
+                    .insert({
+                        id_jugador: idJugador,
+                        nombre_jugador: nombreJugador
+                    });
+                if (errJugador) throw error;
                 //fila única de JSON encapsulado
-                const   {error} = await supabase_client
-                    .from('Respuestas_JSON')
+                const   {error: errResp} = await supabase_client
+                    .from('Respuestas')
                     .insert({
                         id_quizz: idQuizz,
-                        nombre_jugador: nombre,
-                        votos_jason: mapaRespuestas // Supabase detecta
+                        id_jugador: idJugador,
+                        completada: true,
+                        lista_respuesta: mapaRespuestas // Supabase detecta
                     });
-                if (error) throw error;
+                if (errResp) throw error;
                 
                 contenedor.innerHTML = `
                     <div style="text-align:center; padding: 40px 20px;">
                         <h1 style="color: #4CAF50;">¡Datos Recibidos! 🎉</h1>
-                        <p>Hola <strong>${nombre}</strong>, tus respuestas ya están en el servidor.</p>
+                        <p>Hola <strong>${nombreJugador}</strong>, tus respuestas ya están en el servidor.</p>
                         <p>¡Mira la pantalla principal para ver tu puntuación!</p>
                     </div>
                 `;
@@ -172,4 +187,4 @@
         iniciarJuego();
     </script>
     </body>
-</html>
+</html>n
