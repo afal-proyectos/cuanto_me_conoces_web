@@ -151,7 +151,7 @@
             //necesito obter el id del jugador (que es un uuid)
             
             try {
-                //crear el jugador
+                //crear al jugador
                 const idJugador = crypto.randomUUID();
                 const   {error: errJugador} = await supabase_client
                     .from('Jugadores')
@@ -166,7 +166,6 @@
                     .insert({
                         id_quizz: idQuizz,
                         id_jugador: idJugador,
-                        completada: true,
                         lista_respuesta: mapaRespuestas // Supabase detecta
                     });
                 if (errResp) throw error;
