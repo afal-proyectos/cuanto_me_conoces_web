@@ -27,6 +27,9 @@
         const parametrosURL = new URLSearchParams(window.location.search);
         const idQuizz = parametrosURL.get('id');
 
+        //Lista de pregunta
+        let preguntasCargadas = [];
+
         // Función principal que arranca al cargar la página
         async function iniciarJuego() {
             const contenedor = document.getElementById("contenedor-pantalla");
@@ -67,11 +70,10 @@
                     return;
                 }
 
-                // Guardamos los datos en la consola del navegador para verificar el formato
-                console.log("¡Datos del Quizz descargados con éxito!", data);
+                preguntasCargadas = data; //respaldo de datos
                 
                 // 5. Renderizado básico de prueba en la pantalla del celular
-                mostrarEstructuraPrueba(data, contenedor);
+                renderizarInterfaz(contenedor);
 
             } catch (err) {
                 console.error("Error al conectar con Supabase:", err);
@@ -80,36 +82,92 @@
             }
         }
 
-        function mostrarEstructuraPrueba(data, contenedor) {
+        function renderizarInterfaz(contenedor) {
             // Limpiamos el mensaje de "Cargando..."
-            contenedor.innerHTML = "<h1>🎮 ¡Partida Encontrada!</h1><hr>";
+            contenedor.innerHTML = `
+                <h1 style="text-align:center;">🎮 ¡A Jugar!</h1>
+                <div style="margin-bottom: 25px;">
+                    <label style="font-weight:bold; display:block; margin-bottom:5px;">Tu Nombre o Apodo:</label>
+                    <input type="text" id="nombre-jugador" placeholder="Ej. Ale o Juani" style="width:100%; padding: 10px; border-radius:5px; border: 1px solid #ccc; box-sizing: border-box;">
+                </div>
+                <hr>
+            `;
 
             // Recorremos las preguntas estructuradas que nos devolvió Supabase
-            data.forEach(item => {
+            preguntasCargadas.forEach(item => {
                 const pregunta = item.Preguntas;
-                
                 // Creamos el bloque de la pregunta
-                const bloquePregunta = document.createElement("div");
-                bloquePregunta.style.marginBottom = "30px";
-                bloquePregunta.style.textAlign = "left";
+                const bloque = document.createElement("div");
+                bloque.style.margin = "30px 0";
+                bloque.innerHTML = `<h3>${item.index_pregunta}. ${pregunta.texto_pregunta}</h3>`;
                 
-                bloquePregunta.innerHTML = `<h3>${item.index_pregunta}. ${pregunta.texto_pregunta}</h3>`;
-
                 // Recorremos y añadimos sus opciones correspondientes
                 pregunta.Preguntas_Opciones.forEach(relOpcion => {
                     const opcion = relOpcion.Opciones;
-                    bloquePregunta.innerHTML += `
-                        <label style="display: block; margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                            <input type="radio" name="pregunta_${pregunta.id_pregunta}" value="${opcion.id_opcion}">
-                            ${opcion.texto_opcion} (Puntos: ${opcion.puntaje})
+                    bloque.innerHTML += `
+                        <label style="display: block; margin: 8px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="pregunta_${pregunta.id_pregunta}" value="${opcion.id_opcion}" style="margin-right: 10px;">
+                            ${opcion.texto_opcion} 
                         </label>
                     `;
                 });
-
+                
                 contenedor.appendChild(bloquePregunta);
             });
+            //Botón de envío final
+            const botonEnviar = document.createElement("button");
+            botonEnviar.innerText = "Enviar mis respuestas";
+            botonEnviar.style = "width: 100%; padding: 15; background-color: #4CAF50; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px";
+            botonEnviar.onclick = enviarRespuestas;
+            contenedor.appendChild(botonEnviar);
         }
 
+        async function enviarRespuestas() {
+            const nombre = document.getElementById("nombre-jugador").value.trim();
+            if (!nombre){
+                alert("Por favor, escribe tu nombre.");
+            }
+            //Contruir el objeto Json simple
+            const mapaRespuestas = {}
+
+            for (const item of preguntasCargadas){
+                const idPregunta = item.Preguntas.id_pregunta;
+                const opcionSeleccionada = document.querySelector(`input[name="pregunta_${idPregunta}"]:checked`);
+                
+                if (!opcionSeleccionada){
+                    alert(`Te falta responder la pregunta número ${item.index_pregunta}`);
+                return;
+                }
+                //Estructura: {"uuid_pregunta": "uuid_opcion"}
+                mapaRespuestas[idPregunta] = opcionSeleccionada.value;
+            }
+
+            const contenedor = document.getElementById("contenedor-pantalla");
+            contenedor.innerHTML = "<h2>Subiendo tus respuestas... </h2>";
+
+            try {
+                //fila única de JSON encapsulado
+                const   {error} = await supabase_client
+                    .from('Respuestas_JSON')
+                    .insert({
+                        id_quizz: idQuizz,
+                        nombre_jugador: nombre,
+                        votos_jason: mapaRespuestas // Supabase detecta
+                    });
+                if (error) throw error;
+                
+                contenedor.innerHTML = `
+                    <div style="text-align:center; padding: 40px 20px;">
+                        <h1 style="color: #4CAF50;">¡Datos Recibidos! 🎉</h1>
+                        <p>Hola <strong>${nombre}</strong>, tus respuestas ya están en el servidor.</p>
+                        <p>¡Mira la pantalla principal para ver tu puntuación!</p>
+                    </div>
+                `;
+            } catch (err) {
+                alert("Error al enviar: " + err.message);
+                iniciarJuego();
+            }
+        }
         // Ejecutar la lógica inmediatamente al abrir la página
         iniciarJuego();
     </script>
